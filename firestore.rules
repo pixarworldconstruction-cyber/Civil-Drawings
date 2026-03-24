@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required, 'admin' or 'user')
+    //   - displayName: string (optional)
+    //
+    // Collection: projects
+    // Document ID: projectId
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required, owner UID)
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: images
+    // Document ID: imageId
+    // Fields:
+    //   - id: string (required)
+    //   - projectId: string (required)
+    //   - url: string (required, data URI or URL)
+    //   - caption: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: files
+    // Document ID: fileId
+    // Fields:
+    //   - id: string (required)
+    //   - projectId: string (required)
+    //   - name: string (required)
+    //   - url: string (required, data URI)
+    //   - type: string (required, MIME type)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "kesha14112411@gmail.com");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'user'] &&
+             (!('displayName' in data) || data.displayName is string) &&
+             (!('mobileNumber' in data) || data.mobileNumber is string) &&
+             (!('walletBalance' in data) || data.walletBalance is number) &&
+             (!('referralCode' in data) || data.referralCode is string) &&
+             (!('referralCount' in data) || data.referralCount is number) &&
+             (!('referredBy' in data) || (data.referredBy is string || data.referredBy == null)) &&
+             (!('isWelcomeBonusClaimed' in data) || data.isWelcomeBonusClaimed is bool);
+    }
+
+    function isValidProject(data) {
+      return data.userId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 500)) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidImage(data) {
+      return data.projectId is string &&
+             data.url is string && data.url.size() < 2000 && // URL is small
+             (!('caption' in data) || (data.caption is string && data.caption.size() < 200)) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidFile(data) {
+      return data.projectId is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.url is string && data.url.size() < 2000 && // URL is small
+             data.type is string &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidBill(data) {
+      return data.userId is string &&
+             data.projectId is string &&
+             data.projectName is string &&
+             data.amount is number &&
+             data.gst is number &&
+             data.total is number &&
+             (!('discount' in data) || data.discount is number) &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == 'user' || request.auth.token.email == "ronakb2020@gmail.com");
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && (isAdmin() || request.resource.data.role == resource.data.role);
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin()) && isValidProject(request.resource.data) && (isAdmin() || request.resource.data.userId == resource.data.userId);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+    }
+
+    match /images/{imageId} {
+      allow read: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.userId) && isValidImage(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.userId) || isAdmin()) && isValidImage(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.userId) || isAdmin());
+    }
+
+    match /files/{fileId} {
+      allow read: if isAuthenticated() && (isOwner(get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.userId) || isAdmin());
+      allow create: if isAdmin() && isValidFile(request.resource.data);
+      allow update: if isAdmin() && isValidFile(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /bills/{billId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidBill(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}
