@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -18,10 +19,14 @@ export default function ConfirmationModal({
   onConfirm,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'danger'
 }: ConfirmationModalProps) {
+  const { t } = useLanguage();
+  const displayConfirmText = confirmText || t('confirm');
+  const displayCancelText = cancelText || t('cancel');
+
   const variantColors = {
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     warning: 'bg-amber-500 hover:bg-amber-600 text-white',
@@ -71,7 +76,7 @@ export default function ConfirmationModal({
                 onClick={onClose}
                 className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all"
               >
-                {cancelText}
+                {displayCancelText}
               </button>
               <button
                 onClick={() => {
@@ -80,7 +85,7 @@ export default function ConfirmationModal({
                 }}
                 className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-lg ${variantColors[variant]}`}
               >
-                {confirmText}
+                {displayConfirmText}
               </button>
             </div>
           </motion.div>

@@ -5,12 +5,14 @@ import { doc, setDoc, collection, query, where, getDocs, updateDoc, increment } 
 import { motion } from 'motion/react';
 import { Mail, Lock, User, ArrowRight, Loader2, CheckCircle2, Phone, Tag } from 'lucide-react';
 import { UserRole } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface AuthProps {
   onSuccess: () => void;
 }
 
 export default function Auth({ onSuccess }: AuthProps) {
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +34,7 @@ export default function Auth({ onSuccess }: AuthProps) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         if (!mobileNumber) {
-          throw new Error('Mobile number is required for sign up.');
+          throw new Error(t('mobileNumberRequired'));
         }
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -82,7 +84,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      setError('Please enter your email address first.');
+      setError(t('enterEmailFirst'));
       return;
     }
     setLoading(true);
@@ -90,7 +92,7 @@ export default function Auth({ onSuccess }: AuthProps) {
     setMessage('');
     try {
       await sendPasswordResetEmail(auth, email);
-      setMessage('Password reset email sent! Check your inbox.');
+      setMessage(t('passwordResetSent'));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -106,9 +108,9 @@ export default function Auth({ onSuccess }: AuthProps) {
         className="max-w-md w-full bg-white rounded-3xl shadow-xl p-10 border border-slate-100"
       >
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold text-slate-900">{isLogin ? 'Welcome Back' : 'Contractor Sign Up'}</h2>
+          <h2 className="text-3xl font-bold text-slate-900">{isLogin ? t('welcomeBack') : t('contractorSignUp')}</h2>
           <p className="text-slate-500 mt-2">
-            {isLogin ? 'Sign in to access your civil drawings' : 'Join our network of professional civil contractors'}
+            {isLogin ? t('signInToAccess') : t('joinOurNetwork')}
           </p>
         </div>
 
@@ -128,7 +130,7 @@ export default function Auth({ onSuccess }: AuthProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('fullName')}</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
@@ -145,7 +147,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 
           {!isLogin && (
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Mobile Number</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('mobileNumber')}</label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
@@ -161,7 +163,7 @@ export default function Auth({ onSuccess }: AuthProps) {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">{t('emailAddress')}</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
@@ -177,14 +179,14 @@ export default function Auth({ onSuccess }: AuthProps) {
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-semibold text-slate-700">Password</label>
+              <label className="block text-sm font-semibold text-slate-700">{t('password')}</label>
               {isLogin && (
                 <button
                   type="button"
                   onClick={handleForgotPassword}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
                 >
-                  Forgot Password?
+                  {t('forgotPassword')}
                 </button>
               )}
             </div>
@@ -203,7 +205,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 
           {!isLogin && (
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Referral Code (Optional)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">{t('referralCode')} ({t('optional')})</label>
               <div className="relative">
                 <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
@@ -222,7 +224,7 @@ export default function Auth({ onSuccess }: AuthProps) {
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 disabled:opacity-70"
           >
-            {loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Sign In' : 'Create Contractor Account')}
+            {loading ? <Loader2 className="animate-spin" /> : (isLogin ? t('signIn') : t('createContractorAccount'))}
             {!loading && <ArrowRight size={18} />}
           </button>
         </form>
@@ -236,7 +238,7 @@ export default function Auth({ onSuccess }: AuthProps) {
             }}
             className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
           >
-            {isLogin ? "Don't have an account? Sign up as Contractor" : "Already have an account? Sign in"}
+            {isLogin ? t('dontHaveAccount') : t('alreadyHaveAccount')}
           </button>
         </div>
       </motion.div>

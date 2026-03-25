@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ConfirmationModal from './ConfirmationModal';
 import imageCompression from 'browser-image-compression';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DashboardProps {
   user: UserProfile;
@@ -30,6 +31,7 @@ export default function Dashboard({
   currentTab,
   setCurrentTab
 }: DashboardProps) {
+  const { t, formatNumber } = useLanguage();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [images, setImages] = useState<ProjectImage[]>([]);
@@ -68,8 +70,8 @@ export default function Dashboard({
         if (docSnap.exists()) {
           const data = docSnap.data();
           setReferralBenefit({
-            title: data.referralBenefitTitle || 'Refer & Earn',
-            desc: data.referralBenefitDesc || 'Share your code with friends and get benefits on your next project!'
+            title: data.referralBenefitTitle || t('referAndEarnTitle'),
+            desc: data.referralBenefitDesc || t('referAndEarnDesc')
           });
           setPricingConfig({
             welcomeBonus: data.welcomeBonusAmount || 500,
@@ -100,7 +102,7 @@ export default function Dashboard({
             walletBalance: newBalance,
             isWelcomeBonusClaimed: true
           });
-          alert(`Welcome! You've received a bonus of ${pricingConfig.welcomeBonus} coins.`);
+          alert(t('welcomeBonusReceived', { amount: pricingConfig.welcomeBonus }));
         } catch (error) {
           console.error('Error claiming welcome bonus:', error);
         }
@@ -211,7 +213,7 @@ export default function Dashboard({
     const totalCost = estimatedCost + gstAmount;
 
     if ((user.walletBalance || 0) < totalCost) {
-      alert(`Insufficient balance! This project requires ${totalCost} coins (including 18% GST), but you only have ${user.walletBalance || 0} coins.`);
+      alert(t('insufficientBalanceMsg', { totalCost, walletBalance: user.walletBalance || 0 }));
       return;
     }
 
@@ -287,7 +289,7 @@ export default function Dashboard({
     if (files.length === 0 || !selectedProject) return;
 
     if (images.length + files.length > 10) {
-      alert(`Limit reached: You can only have up to 10 images per project. You currently have ${images.length} images.`);
+      alert(t('limitReachedImages', { count: images.length }));
       return;
     }
 
@@ -295,7 +297,7 @@ export default function Dashboard({
     const MAX_SIZE = 5 * 1024 * 1024;
     const oversizedFiles = files.filter(file => file.size > MAX_SIZE);
     if (oversizedFiles.length > 0) {
-      alert(`Some files are too large. Maximum size per image is 5MB.`);
+      alert(t('maxSizeExceeded'));
       return;
     }
 
@@ -303,7 +305,7 @@ export default function Dashboard({
     try {
       const compressionOptions = {
         maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
+        maxWidthOrHeight: 1600,
         useWebWorker: true
       };
 
@@ -323,8 +325,16 @@ export default function Dashboard({
 
           uploadTask.on(
             'state_changed',
-            null,
-            (error) => reject(error),
+            (snapshot) => {
+              // You could track progress here if needed
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              console.log('Upload is ' + progress + '% done');
+            },
+            (error) => {
+              console.error('Upload error:', error);
+              alert(t('uploadFailedFor', { name: file.name, error: error.message }));
+              reject(error);
+            },
             async () => {
               try {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -336,6 +346,8 @@ export default function Dashboard({
                 });
                 resolve();
               } catch (err) {
+                console.error('Firestore error after upload:', err);
+                alert(t('failedToSaveImageInfo', { name: file.name }));
                 reject(err);
               }
             }
@@ -344,7 +356,10 @@ export default function Dashboard({
       });
 
       await Promise.all(uploadPromises);
+      alert(t('uploadSuccess'));
     } catch (error) {
+      console.error('General upload error:', error);
+      alert(t('uploadError'));
       handleFirestoreError(error, OperationType.CREATE, 'images');
     } finally {
       setUploading(false);
@@ -418,7 +433,7 @@ export default function Dashboard({
               await updateDoc(doc(db, 'users', user.uid), {
                 logoUrl: downloadURL
               });
-              alert('Logo uploaded successfully!');
+              alert(t('logoUploadSuccess'));
               resolve();
             } catch (err) {
               reject(err);
@@ -428,9 +443,24 @@ export default function Dashboard({
       });
     } catch (error) {
       console.error('Logo upload error:', error);
-      alert('Failed to upload logo. Please try again.');
+      alert(t('logoUploadFailed'));
     } finally {
       setUploading(false);
+    }
+  };
+
+  const getStatusKey = (status: ProjectStatus) => {
+    switch (status) {
+      case 'Project payment not processed': return 'statusPaymentNotProcessed';
+      case 'Payment received': return 'statusPaymentReceived';
+      case 'All Details verified': return 'statusDetailsVerified';
+      case 'Data (photo/details) missing': return 'statusDataMissing';
+      case 'Project drawing in process': return 'statusDrawingInProcess';
+      case '1st preview sent': return 'status1stPreviewSent';
+      case '2nd preview sent': return 'status2ndPreviewSent';
+      case 'Working on revision': return 'statusWorkingOnRevision';
+      case 'Project completed': return 'statusProjectCompleted';
+      default: return 'status';
     }
   };
 
@@ -483,16 +513,16 @@ export default function Dashboard({
     }
 
     doc.setFontSize(20);
-    doc.text('INVOICE', 105, 50, { align: 'center' });
+    doc.text(t('invoice'), 105, 50, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.text(`Bill ID: ${bill.id}`, 20, 65);
-    doc.text(`Date: ${bill.createdAt?.toDate().toLocaleDateString()}`, 20, 70);
-    doc.text(`Project: ${bill.projectName}`, 20, 75);
+    doc.text(`${t('billId')}: ${bill.id}`, 20, 65);
+    doc.text(`${t('date')}: ${bill.createdAt?.toDate().toLocaleDateString()}`, 20, 70);
+    doc.text(`${t('project')}: ${bill.projectName}`, 20, 75);
     
     // Client Info
     doc.setFontSize(12);
-    doc.text('Bill To:', 20, 90);
+    doc.text(t('billTo'), 20, 90);
     doc.setFontSize(10);
     doc.text(user.displayName || user.email, 20, 97);
     if (user.companyName) doc.text(user.companyName, 20, 102);
@@ -502,18 +532,18 @@ export default function Dashboard({
     // Table
     autoTable(doc, {
       startY: 125,
-      head: [['Description', 'Amount (Coins)']],
+      head: [[t('billDescription'), t('billAmountCoins')]],
       body: [
-        ['Project Design Fee', bill.amount.toFixed(2)],
-        ['GST (18%)', bill.gst.toFixed(2)],
-        ['Discount', bill.discount ? `-${bill.discount.toFixed(2)}` : '0.00'],
+        [t('projectDesignFee'), bill.amount.toFixed(2)],
+        [t('gst18'), bill.gst.toFixed(2)],
+        [t('discount'), bill.discount ? `-${bill.discount.toFixed(2)}` : '0.00'],
       ],
-      foot: [['Total', bill.total.toFixed(2)]],
+      foot: [[t('total'), bill.total.toFixed(2)]],
       theme: 'striped',
       headStyles: { fillColor: [79, 70, 229] },
     });
     
-    doc.save(`Bill_${bill.projectName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(t('billFileName', { name: bill.projectName.replace(/\s+/g, '_') }));
   };
 
   return (
@@ -524,7 +554,7 @@ export default function Dashboard({
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
             <Building2 size={20} />
           </div>
-          <span className="font-bold text-slate-900">Dashboard</span>
+          <span className="font-bold text-slate-900">{t('dashboard')}</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -556,7 +586,7 @@ export default function Dashboard({
               className="w-full bg-indigo-600 text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 mb-6"
             >
               <Plus size={20} />
-              New Project
+              {t('newProject')}
             </button>
 
             <nav className="space-y-1">
@@ -567,7 +597,7 @@ export default function Dashboard({
                 }`}
               >
                 <Folder size={20} />
-                My Projects
+                {t('myProjects')}
               </button>
               
               {currentTab === 'projects' && projects.length > 0 && (
@@ -593,7 +623,7 @@ export default function Dashboard({
                 }`}
               >
                 <User size={20} />
-                Profile
+                {t('profile')}
               </button>
 
               <button
@@ -603,7 +633,7 @@ export default function Dashboard({
                 }`}
               >
                 <CreditCard size={20} />
-                Billing
+                {t('billing')}
               </button>
 
               <button
@@ -613,7 +643,7 @@ export default function Dashboard({
                 }`}
               >
                 <Coins size={20} />
-                Refer and Earn
+                {t('referAndEarn')}
               </button>
             </nav>
           </div>
@@ -634,14 +664,14 @@ export default function Dashboard({
                   <Coins size={24} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wallet Balance</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('walletBalance')}</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-slate-900">{user.walletBalance || 0} <span className="text-sm font-normal text-slate-400">Coins</span></p>
+                    <p className="text-2xl font-bold text-slate-900">{user.walletBalance || 0} <span className="text-sm font-normal text-slate-400">{t('coins')}</span></p>
                     <button 
                       onClick={onAddCoins}
                       className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline flex items-center gap-1"
                     >
-                      <Plus size={10} /> Add Coin
+                      <Plus size={10} /> {t('addCoins')}
                     </button>
                   </div>
                 </div>
@@ -650,7 +680,7 @@ export default function Dashboard({
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-1 rounded-lg text-[10px] font-bold border border-amber-100">
                     <AlertCircle size={12} />
-                    Low Balance
+                    {t('lowBalance')}
                   </div>
                 </div>
               )}
@@ -666,7 +696,7 @@ export default function Dashboard({
                 <Folder size={24} />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Projects</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('totalProjects')}</p>
                 <p className="text-2xl font-bold text-slate-900">{projects.length}</p>
               </div>
             </motion.div>
@@ -680,7 +710,7 @@ export default function Dashboard({
                 <CreditCard size={24} />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Bills</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('totalBills')}</p>
                 <p className="text-2xl font-bold text-slate-900">{bills.length}</p>
               </div>
             </motion.div>
@@ -698,8 +728,8 @@ export default function Dashboard({
                     </div>
                   )}
                   <div>
-                    <h1 className="text-3xl font-bold text-slate-900">{user.companyName || 'My Projects'}</h1>
-                    <p className="text-slate-500 mt-1">Manage your civil construction projects and site images</p>
+                    <h1 className="text-3xl font-bold text-slate-900">{user.companyName || t('dashboard')}</h1>
+                    <p className="text-slate-500 mt-1">{t('manageProjectsDesc')}</p>
                   </div>
                 </div>
               </div>
@@ -725,40 +755,40 @@ export default function Dashboard({
                       <h2 className="text-2xl font-bold text-slate-900">{selectedProject.name}</h2>
                       <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
                         {getStatusIcon(selectedProject.status)}
-                        <span className="text-xs font-bold text-slate-700">{selectedProject.status}</span>
+                        <span className="text-xs font-bold text-slate-700">{t(getStatusKey(selectedProject.status))}</span>
                       </div>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type</p>
-                        <p className="text-xs font-bold text-indigo-600 truncate">
-                          {selectedProject.projectType === 'Construction Project Drawing' ? 'Construction' : 'Interior Design'}
-                        </p>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Type</p>
-                        <p className="text-xs font-bold text-slate-700 capitalize truncate">{selectedProject.subType}</p>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Built-up</p>
-                        <p className="text-xs font-bold text-slate-700 truncate">{selectedProject.totalBuiltUpArea} sqft</p>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">North</p>
-                        <p className="text-xs font-bold text-slate-700 capitalize truncate">{selectedProject.northDirection}</p>
-                      </div>
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('projectType')}</p>
+                      <p className="text-xs font-bold text-indigo-600 truncate">
+                        {selectedProject.projectType === 'Construction Project Drawing' ? t('construction') : t('interiorDesign')}
+                      </p>
                     </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('subType')}</p>
+                      <p className="text-xs font-bold text-slate-700 capitalize truncate">{t(selectedProject.subType.toLowerCase().replace(/\s+/g, ''))}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('builtUpArea')}</p>
+                      <p className="text-xs font-bold text-slate-700 truncate">{formatNumber(selectedProject.totalBuiltUpArea)} {t('sqft')}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('northDirection')}</p>
+                      <p className="text-xs font-bold text-slate-700 capitalize truncate">{t(selectedProject.northDirection.toLowerCase())}</p>
+                    </div>
+                  </div>
                     
                     {selectedProject.subType === 'Resident' && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg">
-                          {selectedProject.bedrooms}B {selectedProject.hall}H {selectedProject.kitchen}K
+                          {selectedProject.bedrooms}{t('bedrooms').charAt(0)} {selectedProject.hall}{t('hall').charAt(0)} {selectedProject.kitchen}{t('kitchen').charAt(0)}
                         </span>
                         <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg capitalize">
-                          {selectedProject.housingType}
+                          {t(selectedProject.housingType.toLowerCase().replace(/\s+/g, ''))}
                         </span>
                         <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg">
-                          {selectedProject.numberOfFloors} Floors
+                          {selectedProject.numberOfFloors} {t('floors')}
                         </span>
                       </div>
                     )}
@@ -766,7 +796,7 @@ export default function Dashboard({
                     <p className="text-slate-500 mt-4 text-sm leading-relaxed">{selectedProject.description}</p>
                     <div className="mt-4 flex items-center gap-2">
                       <span className={`text-xs font-bold px-2 py-1 rounded-full ${images.length >= 10 ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                        {images.length}/10 Images
+                        {images.length}/10 {t('siteImages')}
                       </span>
                     </div>
                   </div>
@@ -780,23 +810,23 @@ export default function Dashboard({
                       onChange={handleImageUpload}
                       disabled={uploading}
                     />
-                    <label
-                      htmlFor="image-upload"
-                      className={`flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold cursor-pointer hover:bg-indigo-100 transition-all ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {uploading ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
-                      {uploading ? 'Uploading...' : 'Upload Image'}
-                    </label>
+                      <label
+                        htmlFor="image-upload"
+                        className={`flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold cursor-pointer hover:bg-indigo-100 transition-all ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {uploading ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
+                        {uploading ? t('uploading') : t('uploadImage')}
+                      </label>
                   </div>
                 </div>
 
                 {/* Site Images Section */}
                 <div className="mb-10">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Site Photos</h3>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">{t('sitePhotos')}</h3>
                   {images.length === 0 ? (
                     <div className="py-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
                       <ImageIcon className="mx-auto text-slate-300 mb-2" size={32} />
-                      <p className="text-slate-500 text-sm">No images uploaded yet.</p>
+                      <p className="text-slate-500 text-sm">{t('noImagesUploaded')}</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -834,11 +864,11 @@ export default function Dashboard({
 
                 {/* Project Files Section */}
                 <div>
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Admin Shared Files</h3>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">{t('adminSharedFiles')}</h3>
                   {projectFiles.length === 0 ? (
                     <div className="py-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
                       <FileText className="mx-auto text-slate-300 mb-2" size={32} />
-                      <p className="text-slate-500 text-sm">No files shared by admin yet.</p>
+                      <p className="text-slate-500 text-sm">{t('noFilesShared')}</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -859,7 +889,7 @@ export default function Dashboard({
                             className="flex items-center gap-2 bg-white text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                           >
                             <Download size={14} />
-                            Download
+                            {t('download')}
                           </a>
                         </div>
                       ))}
@@ -870,8 +900,8 @@ export default function Dashboard({
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
                     <Camera className="text-slate-200 mb-6" size={64} />
-                    <h2 className="text-xl font-bold text-slate-900">Select a Project</h2>
-                    <p className="text-slate-500 mt-2 max-w-xs mx-auto text-sm">Choose a project from the sidebar to view its image gallery and upload new site photos.</p>
+                    <h2 className="text-xl font-bold text-slate-900">{t('selectProject')}</h2>
+                    <p className="text-slate-500 mt-2 max-w-xs mx-auto text-sm">{t('selectProjectDesc')}</p>
                   </div>
                 )}
               </div>
@@ -887,14 +917,14 @@ export default function Dashboard({
               className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8"
             >
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold text-slate-900">Company Profile</h2>
+                <h2 className="text-2xl font-bold text-slate-900">{t('companyProfile')}</h2>
               </div>
               <form onSubmit={handleUpdateProfile} className="space-y-6 max-w-2xl">
                 <div className="flex items-center gap-8 mb-8">
                   <div className="relative">
                     <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                       {logoUrl ? (
-                        <img src={logoUrl || undefined} alt="Logo Preview" className="w-full h-full object-contain" />
+                        <img src={logoUrl || undefined} alt={t('logoPreview')} className="w-full h-full object-contain" />
                       ) : (
                         <Building2 className="text-slate-300" size={48} />
                       )}
@@ -905,14 +935,14 @@ export default function Dashboard({
                     </label>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">Company Logo</h3>
-                    <p className="text-sm text-slate-500">Upload your company logo for professional invoices and project reports.</p>
+                    <h3 className="text-lg font-bold text-slate-900">{t('companyLogo')}</h3>
+                    <p className="text-sm text-slate-500">{t('companyLogoDesc')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('companyName')}</label>
                     <div className="relative">
                       <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input
@@ -920,13 +950,13 @@ export default function Dashboard({
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                        placeholder="e.g. Skyline Constructions"
+                        placeholder={t('companyNamePlaceholder')}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Mobile Number</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('mobileNumber')}</label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input
@@ -934,13 +964,13 @@ export default function Dashboard({
                         value={mobileNumber}
                         onChange={(e) => setMobileNumber(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                        placeholder="+91 98765 43210"
+                        placeholder={t('mobileNumberPlaceholder')}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">GST Number</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('gstNumber')}</label>
                     <div className="relative">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input
@@ -948,21 +978,21 @@ export default function Dashboard({
                         value={gstNumber}
                         onChange={(e) => setGstNumber(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                        placeholder="22AAAAA0000A1Z5"
+                        placeholder={t('gstNumberPlaceholder')}
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">{t('address')}</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-4 text-slate-400" size={20} />
                     <textarea
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 h-32 resize-none transition-all"
-                      placeholder="Full office address..."
+                      placeholder={t('addressPlaceholder')}
                     />
                   </div>
                 </div>
@@ -972,7 +1002,7 @@ export default function Dashboard({
                   disabled={updatingProfile || uploading}
                   className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
                 >
-                  {updatingProfile ? 'Saving...' : 'Save Changes'}
+                  {updatingProfile ? t('saving') : t('saveChanges')}
                 </button>
               </form>
             </motion.div>
@@ -986,16 +1016,16 @@ export default function Dashboard({
             >
               <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Billing History</h2>
-                  <p className="text-slate-500 text-sm mt-1">Download invoices for your completed project payments</p>
+                  <h2 className="text-2xl font-bold text-slate-900">{t('billingHistory')}</h2>
+                  <p className="text-slate-500 text-sm mt-1">{t('billingHistoryDesc')}</p>
                 </div>
               </div>
 
               {bills.length === 0 ? (
                 <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100">
                   <CreditCard className="mx-auto text-slate-200 mb-4" size={64} />
-                  <p className="text-slate-500 font-medium">No billing history found.</p>
-                  <p className="text-slate-400 text-sm mt-1">Invoices will appear here once you create projects.</p>
+                  <p className="text-slate-500 font-medium">{t('noBillingHistory')}</p>
+                  <p className="text-slate-400 text-sm mt-1">{t('noBillingHistoryDesc')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1004,10 +1034,10 @@ export default function Dashboard({
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-bottom border-slate-100">
-                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Project</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Amount</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Action</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">{t('date')}</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">{t('project')}</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">{t('amount')}</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">{t('action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1021,8 +1051,8 @@ export default function Dashboard({
                               <p className="text-[10px] text-slate-400">ID: {bill.id.substring(0, 8)}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <p className="text-sm font-bold text-indigo-600">{bill.total.toFixed(2)} Coins</p>
-                              <p className="text-[10px] text-slate-400">Incl. 18% GST</p>
+                              <p className="text-sm font-bold text-indigo-600">{formatNumber(bill.total)} {t('coins')}</p>
+                              <p className="text-[10px] text-slate-400">{t('inclGst')}</p>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button
@@ -1030,7 +1060,7 @@ export default function Dashboard({
                                 className="inline-flex items-center gap-2 bg-white text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                               >
                                 <Download size={14} />
-                                Download Bill
+                                {t('downloadBill')}
                               </button>
                             </td>
                           </tr>
@@ -1052,8 +1082,8 @@ export default function Dashboard({
                             <p className="text-[10px] text-slate-400">ID: {bill.id.substring(0, 8)}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-indigo-600">{bill.total.toFixed(2)} Coins</p>
-                            <p className="text-[10px] text-slate-400">Incl. 18% GST</p>
+                            <p className="font-bold text-indigo-600">{formatNumber(bill.total)} {t('coins')}</p>
+                            <p className="text-[10px] text-slate-400">{t('inclGst')}</p>
                           </div>
                         </div>
                         <button
@@ -1061,7 +1091,7 @@ export default function Dashboard({
                           className="w-full flex items-center justify-center gap-2 bg-white text-indigo-600 py-3 rounded-xl text-sm font-bold border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                         >
                           <Download size={16} />
-                          Download Invoice
+                          {t('downloadInvoice')}
                         </button>
                       </div>
                     ))}
@@ -1078,19 +1108,19 @@ export default function Dashboard({
               className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8"
             >
               <div className="max-w-3xl">
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">Refer and Earn</h2>
-                <p className="text-slate-500 mb-8">Invite your friends to join and earn bonus coins for every successful referral.</p>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">{t('referAndEarn')}</h2>
+                <p className="text-slate-500 mb-8">{t('referAndEarnDesc')}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                   <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                     <div className="relative z-10">
-                      <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-2">Your Referral Code</p>
+                      <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-2">{t('yourReferralCode')}</p>
                       <div className="flex items-center gap-4">
-                        <h3 className="text-3xl font-mono font-bold tracking-tighter">{user.referralCode || 'GENERATING...'}</h3>
+                        <h3 className="text-3xl font-mono font-bold tracking-tighter">{user.referralCode || t('generating')}</h3>
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(user.referralCode || '');
-                            alert('Referral code copied!');
+                            alert(t('referralCodeCopied'));
                           }}
                           className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-all backdrop-blur-md"
                         >
@@ -1102,31 +1132,31 @@ export default function Dashboard({
                   </div>
 
                   <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 flex flex-col justify-center">
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Total Referrals</p>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">{t('totalReferrals')}</p>
                     <div className="flex items-baseline gap-2">
-                      <h3 className="text-4xl font-bold text-slate-900">{user.referralCount || 0}</h3>
-                      <p className="text-slate-500 text-sm font-medium">Friends Joined</p>
+                      <h3 className="text-4xl font-bold text-slate-900">{formatNumber(user.referralCount || 0)}</h3>
+                      <p className="text-slate-500 text-sm font-medium">{t('friendsJoined')}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-lg font-bold text-slate-900">How it works</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{t('howItWorks')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-3">
                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">1</div>
-                      <p className="text-sm font-bold text-slate-900">Share your code</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">Send your unique referral code to friends and colleagues.</p>
+                      <p className="text-sm font-bold text-slate-900">{t('shareYourCode')}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{t('shareYourCodeDesc')}</p>
                     </div>
                     <div className="space-y-3">
                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">2</div>
-                      <p className="text-sm font-bold text-slate-900">They sign up</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">When they join using your code, they get a welcome bonus.</p>
+                      <p className="text-sm font-bold text-slate-900">{t('theySignUp')}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{t('theySignUpDesc')}</p>
                     </div>
                     <div className="space-y-3">
                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">3</div>
-                      <p className="text-sm font-bold text-slate-900">Earn rewards</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">You receive bonus coins in your wallet for each successful referral.</p>
+                      <p className="text-sm font-bold text-slate-900">{t('earnRewards')}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{t('earnRewardsDesc')}</p>
                     </div>
                   </div>
                 </div>
@@ -1155,27 +1185,27 @@ export default function Dashboard({
               className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8"
             >
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-900">New Project</h2>
+                <h2 className="text-2xl font-bold text-slate-900">{t('newProject')}</h2>
                 <button onClick={() => setIsNewProjectModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                   <X size={24} />
                 </button>
               </div>
               <form onSubmit={handleCreateProject} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Project Name</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">{t('projectName')}</label>
                   <input
                     type="text"
                     required
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="e.g. Skyline Apartments"
+                    placeholder={t('projectNamePlaceholder')}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Project Type</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('projectType')}</label>
                     <select
                       value={projectType}
                       onChange={(e) => {
@@ -1185,12 +1215,12 @@ export default function Dashboard({
                       }}
                       className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
-                      <option value="Construction Project Drawing">Construction</option>
-                      <option value="Interior design Project Drawing">Interior Design</option>
+                      <option value="Construction Project Drawing">{t('construction')}</option>
+                      <option value="Interior design Project Drawing">{t('interiorDesign')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Sub Type</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('subType')}</label>
                     <select
                       value={subType}
                       onChange={(e) => setSubType(e.target.value)}
@@ -1198,17 +1228,17 @@ export default function Dashboard({
                     >
                       {projectType === 'Construction Project Drawing' ? (
                         <>
-                          <option value="Resident">Resident</option>
-                          <option value="Commercial">Commercial</option>
-                          <option value="Resi-Com">Resi-Com</option>
-                          <option value="Other">Other</option>
+                          <option value="Resident">{t('resident')}</option>
+                          <option value="Commercial">{t('commercial')}</option>
+                          <option value="Resi-Com">{t('resiCom')}</option>
+                          <option value="Other">{t('other')}</option>
                         </>
                       ) : (
                         <>
-                          <option value="Resident">Resident</option>
-                          <option value="Office Design">Office Design</option>
-                          <option value="Restaurant / Café Design">Restaurant / Café Design</option>
-                          <option value="Other">Other</option>
+                          <option value="Resident">{t('resident')}</option>
+                          <option value="Office Design">{t('officeDesign')}</option>
+                          <option value="Restaurant / Café Design">{t('restaurantCafeDesign')}</option>
+                          <option value="Other">{t('other')}</option>
                         </>
                       )}
                     </select>
@@ -1219,7 +1249,7 @@ export default function Dashboard({
                   <div className="space-y-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Bedrooms</label>
+                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">{t('bedrooms')}</label>
                         <input
                           type="number"
                           required
@@ -1230,7 +1260,7 @@ export default function Dashboard({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Hall</label>
+                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">{t('hall')}</label>
                         <input
                           type="number"
                           required
@@ -1241,7 +1271,7 @@ export default function Dashboard({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Kitchen</label>
+                        <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">{t('kitchen')}</label>
                         <input
                           type="number"
                           required
@@ -1253,17 +1283,17 @@ export default function Dashboard({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Housing Type</label>
+                      <label className="block text-[10px] font-bold text-indigo-600 uppercase mb-1">{t('housingType')}</label>
                       <select
                         value={housingType}
                         onChange={(e) => setHousingType(e.target.value as HousingType)}
                         className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg focus:ring-2 focus:ring-indigo-500"
                       >
-                        <option value="Row House">Row House</option>
-                        <option value="Duplex">Duplex</option>
-                        <option value="Bungalow">Bungalow</option>
-                        <option value="Villa">Villa</option>
-                        <option value="Apartment">Apartment</option>
+                        <option value="Row House">{t('rowHouse')}</option>
+                        <option value="Duplex">{t('duplex')}</option>
+                        <option value="Bungalow">{t('bungalow')}</option>
+                        <option value="Villa">{t('villa')}</option>
+                        <option value="Apartment">{t('apartment')}</option>
                       </select>
                     </div>
                   </div>
@@ -1271,7 +1301,7 @@ export default function Dashboard({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Built-up Area (sqft)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('builtUpAreaSqft')}</label>
                     <input
                       type="number"
                       required
@@ -1282,7 +1312,7 @@ export default function Dashboard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Carpet Area (sqft)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('carpetAreaSqft')}</label>
                     <input
                       type="number"
                       required
@@ -1296,7 +1326,7 @@ export default function Dashboard({
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Floors</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('floors')}</label>
                     <input
                       type="number"
                       required
@@ -1307,7 +1337,7 @@ export default function Dashboard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Landscaping</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('landscaping')}</label>
                     <input
                       type="number"
                       value={landscapingArea}
@@ -1317,7 +1347,7 @@ export default function Dashboard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Compound</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">{t('compound')}</label>
                     <input
                       type="number"
                       value={compoundArea}
@@ -1329,7 +1359,7 @@ export default function Dashboard({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">North Direction</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">{t('northDirection')}</label>
                   <div className="grid grid-cols-4 gap-2">
                     {['Up', 'Down', 'Left', 'Right'].map((dir) => (
                       <button
@@ -1342,46 +1372,46 @@ export default function Dashboard({
                             : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-200'
                         }`}
                       >
-                        {dir}
+                        {t(dir.toLowerCase())}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">{t('description')}</label>
                   <textarea
                     value={newProjectDesc}
                     onChange={(e) => setNewProjectDesc(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent h-20 resize-none"
-                    placeholder="Any additional notes..."
+                    placeholder={t('descriptionPlaceholder')}
                   />
                 </div>
 
                 {/* Cost Estimation & Wallet Check */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
                   <div className="flex justify-between items-center">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Base Design Fee</p>
-                    <p className="text-sm font-bold text-slate-700">{Math.round(currentEstimate / 1.18)} Coins</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('baseDesignFee')}</p>
+                    <p className="text-sm font-bold text-slate-700">{formatNumber(Math.round(currentEstimate / 1.18))} {t('coins')}</p>
                   </div>
                   <div className="flex justify-between items-center">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">GST (18%)</p>
-                    <p className="text-sm font-bold text-slate-700">{currentEstimate - Math.round(currentEstimate / 1.18)} Coins</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('gst18')}</p>
+                    <p className="text-sm font-bold text-slate-700">{formatNumber(currentEstimate - Math.round(currentEstimate / 1.18))} {t('coins')}</p>
                   </div>
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Total Cost</p>
-                    <p className="text-lg font-bold text-indigo-600">{currentEstimate} Coins</p>
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">{t('totalCost')}</p>
+                    <p className="text-lg font-bold text-indigo-600">{formatNumber(currentEstimate)} {t('coins')}</p>
                   </div>
                   <div className="flex justify-between items-center pt-1">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Balance</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('yourBalance')}</p>
                     <p className={`text-sm font-bold ${(user.walletBalance || 0) < currentEstimate ? 'text-red-500' : 'text-emerald-600'}`}>
-                      {user.walletBalance || 0} Coins
+                      {formatNumber(user.walletBalance || 0)} {t('coins')}
                     </p>
                   </div>
                   {(user.walletBalance || 0) < currentEstimate && (
                     <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-[10px] font-bold">
                       <AlertCircle size={14} />
-                      Insufficient balance to create this project.
+                      {t('insufficientBalance')}
                     </div>
                   )}
                 </div>
@@ -1391,7 +1421,7 @@ export default function Dashboard({
                   disabled={(user.walletBalance || 0) < currentEstimate}
                   className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Project
+                  {t('createProject')}
                 </button>
               </form>
             </motion.div>
@@ -1402,10 +1432,10 @@ export default function Dashboard({
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteProject}
-        title="Delete Project?"
-        message="Are you sure you want to delete this project? This action cannot be undone and will remove all associated images and files."
-        confirmText="Delete Project"
-        cancelText="Keep Project"
+        title={t('deleteProjectTitle')}
+        message={t('deleteProjectMessage')}
+        confirmText={t('deleteProject')}
+        cancelText={t('keepProject')}
       />
     </div>
   );

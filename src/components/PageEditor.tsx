@@ -6,6 +6,7 @@ import { PageContent } from '../types';
 import imageCompression from 'browser-image-compression';
 import { Save, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Upload, CreditCard, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const DEFAULT_CONTENT: PageContent = {
   id: 'main',
@@ -82,6 +83,7 @@ const DEFAULT_CONTENT: PageContent = {
 };
 
 export default function PageEditor() {
+  const { t, formatNumber } = useLanguage();
   const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,10 +123,10 @@ export default function PageEditor() {
     setSaving(true);
     try {
       await setDoc(doc(db, 'siteContent', 'main'), content);
-      alert('Content saved successfully!');
+      alert(t('contentSaved'));
     } catch (error) {
       console.error('Error saving content:', error);
-      alert('Failed to save content.');
+      alert(t('failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -207,7 +209,7 @@ export default function PageEditor() {
       );
     } catch (error) {
       console.error('PDF upload error:', error);
-      alert('Failed to upload PDF');
+      alert(t('pdfUploadFailed'));
       setUploadingPdf(null);
     }
   };
@@ -234,13 +236,13 @@ export default function PageEditor() {
 
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      alert(t('fileSizeLimit'));
       return;
     }
 
     // Check file type
     if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      alert('Only JPG and PNG images are allowed');
+      alert(t('fileTypeLimit'));
       return;
     }
 
@@ -271,7 +273,7 @@ export default function PageEditor() {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               updateHeroSlide(index, downloadURL);
-              alert('Image uploaded successfully!');
+              alert(t('imageUploadSuccess'));
               resolve();
             } catch (err) {
               reject(err);
@@ -281,7 +283,7 @@ export default function PageEditor() {
       });
     } catch (error) {
       console.error('Hero image upload error:', error);
-      alert('Failed to upload image');
+      alert(t('imageUploadFailed'));
     } finally {
       setUploadingHeroImage(null);
     }
@@ -331,8 +333,8 @@ export default function PageEditor() {
     <div className="space-y-6 max-w-4xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Page Content Editor</h2>
-          <p className="text-slate-500">Edit the content of your public pages</p>
+          <h2 className="text-2xl font-bold text-slate-900">{t('pageEditorTitle')}</h2>
+          <p className="text-slate-500">{t('pageEditorSubtitle')}</p>
         </div>
         <button
           onClick={handleSave}
@@ -340,12 +342,12 @@ export default function PageEditor() {
           className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all font-semibold shadow-lg shadow-indigo-200"
         >
           {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? t('saving') : t('saveChanges')}
         </button>
       </div>
 
       {/* Hero Section */}
-      <SectionHeader id="hero" title="Hero Section (Home Page Carousel)" />
+      <SectionHeader id="hero" title={t('heroSection')} />
       <AnimatePresence>
         {activeSection === 'hero' && (
           <motion.div
@@ -357,7 +359,7 @@ export default function PageEditor() {
             <div className="p-6 bg-white border border-slate-200 rounded-xl space-y-6 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hero Title</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('heroTitle')}</label>
                   <input
                     type="text"
                     value={content.heroTitle}
@@ -366,7 +368,7 @@ export default function PageEditor() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hero Subtitle</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('heroSubtitle')}</label>
                   <input
                     type="text"
                     value={content.heroSubtitle}
@@ -378,19 +380,19 @@ export default function PageEditor() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800">Carousel Images</h4>
+                  <h4 className="font-bold text-slate-800">{t('carouselImages')}</h4>
                   <button
                     onClick={addHeroSlide}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-semibold"
                   >
-                    <Plus size={16} /> Add Slide
+                    <Plus size={16} /> {t('addSlide')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {content.heroSlides.map((slide, index) => (
                     <div key={index} className="relative group p-4 bg-slate-50 rounded-xl border border-slate-200">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-slate-400">Slide {index + 1}</span>
+                        <span className="text-xs font-bold text-slate-400">{t('slide')} {formatNumber(index + 1)}</span>
                         <button
                           onClick={() => removeHeroSlide(index)}
                           className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
@@ -401,7 +403,7 @@ export default function PageEditor() {
                       <div className="space-y-3">
                         <div className="relative aspect-video bg-slate-200 rounded-lg overflow-hidden">
                           {slide ? (
-                            <img src={slide || undefined} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
+                            <img src={slide || undefined} alt={`${t('slide')} ${formatNumber(index + 1)}`} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <ImageIcon className="text-slate-400" size={32} />
@@ -410,7 +412,7 @@ export default function PageEditor() {
                           <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                             <div className="flex flex-col items-center gap-2 text-white">
                               {uploadingHeroImage === index ? <Loader2 className="animate-spin" size={24} /> : <Upload size={24} />}
-                              <span className="text-xs font-bold">{uploadingHeroImage === index ? 'Uploading...' : 'Upload Image'}</span>
+                              <span className="text-xs font-bold">{uploadingHeroImage === index ? t('uploading') : t('uploadImage')}</span>
                             </div>
                             <input
                               type="file"
@@ -426,7 +428,7 @@ export default function PageEditor() {
                           value={slide}
                           onChange={(e) => updateHeroSlide(index, e.target.value)}
                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
-                          placeholder="Or enter image URL..."
+                          placeholder={t('enterImageUrl')}
                         />
                       </div>
                     </div>
@@ -439,7 +441,7 @@ export default function PageEditor() {
       </AnimatePresence>
 
       {/* Features Section */}
-      <SectionHeader id="features" title="Features Section (Home Page)" />
+      <SectionHeader id="features" title={t('featuresSection')} />
       <AnimatePresence>
         {activeSection === 'features' && (
           <motion.div
@@ -451,9 +453,9 @@ export default function PageEditor() {
             <div className="p-6 bg-white border border-slate-200 rounded-xl space-y-6 mb-4">
               {content.features.map((feature, index) => (
                 <div key={index} className="p-4 bg-slate-50 rounded-lg space-y-3">
-                  <h4 className="font-semibold text-slate-800">Feature {index + 1}</h4>
+                  <h4 className="font-semibold text-slate-800">{t('feature')} {formatNumber(index + 1)}</h4>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('title')}</label>
                     <input
                       type="text"
                       value={feature.title}
@@ -462,7 +464,7 @@ export default function PageEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('description')}</label>
                     <textarea
                       value={feature.desc}
                       onChange={(e) => updateFeature(index, 'desc', e.target.value)}
@@ -477,7 +479,7 @@ export default function PageEditor() {
       </AnimatePresence>
 
       {/* Products Section */}
-      <SectionHeader id="products" title="Products Page & Management" />
+      <SectionHeader id="products" title={t('productsSection')} />
       <AnimatePresence>
         {activeSection === 'products' && (
           <motion.div
@@ -489,7 +491,7 @@ export default function PageEditor() {
             <div className="p-6 bg-white border border-slate-200 rounded-xl space-y-8 mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Page Title</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageTitle')}</label>
                   <input
                     type="text"
                     value={content.productsTitle}
@@ -498,7 +500,7 @@ export default function PageEditor() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Page Description</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageDescription')}</label>
                   <input
                     type="text"
                     value={content.productsDesc}
@@ -510,12 +512,12 @@ export default function PageEditor() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800">Product Listings</h4>
+                  <h4 className="font-bold text-slate-800">{t('productListings')}</h4>
                   <button
                     onClick={addProduct}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-semibold"
                   >
-                    <Plus size={16} /> Add Product
+                    <Plus size={16} /> {t('addProduct')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-6">
@@ -530,7 +532,7 @@ export default function PageEditor() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Product Name</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('productName')}</label>
                             <input
                               type="text"
                               value={product.name}
@@ -539,7 +541,7 @@ export default function PageEditor() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Price</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('price')}</label>
                             <input
                               type="text"
                               value={product.price}
@@ -550,7 +552,7 @@ export default function PageEditor() {
                         </div>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Image URL</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('imageUrl')}</label>
                             <input
                               type="text"
                               value={product.image}
@@ -559,7 +561,7 @@ export default function PageEditor() {
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('description')}</label>
                             <textarea
                               value={product.description}
                               onChange={(e) => updateProduct(index, 'description', e.target.value)}
@@ -578,7 +580,7 @@ export default function PageEditor() {
       </AnimatePresence>
 
       {/* About Section */}
-      <SectionHeader id="about" title="About Page" />
+      <SectionHeader id="about" title={t('aboutPage')} />
       <AnimatePresence>
         {activeSection === 'about' && (
           <motion.div
@@ -589,7 +591,7 @@ export default function PageEditor() {
           >
             <div className="p-6 bg-white border border-slate-200 rounded-xl space-y-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Page Title</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageTitle')}</label>
                 <input
                   type="text"
                   value={content.aboutTitle}
@@ -598,7 +600,7 @@ export default function PageEditor() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Page Content</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageContent')}</label>
                 <textarea
                   value={content.aboutDesc}
                   onChange={(e) => setContent({ ...content, aboutDesc: e.target.value })}
@@ -611,7 +613,7 @@ export default function PageEditor() {
       </AnimatePresence>
 
       {/* Pricing Section */}
-      <SectionHeader id="pricing" title="Pricing Page & Discount Offers" />
+      <SectionHeader id="pricing" title={t('pricingSection')} />
       <AnimatePresence>
         {activeSection === 'pricing' && (
           <motion.div
@@ -623,7 +625,7 @@ export default function PageEditor() {
             <div className="p-6 bg-white border border-slate-200 rounded-xl space-y-10 mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Page Title</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageTitle')}</label>
                   <input
                     type="text"
                     value={content.pricingTitle}
@@ -632,7 +634,7 @@ export default function PageEditor() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Page Subtitle</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('pageSubtitle')}</label>
                   <input
                     type="text"
                     value={content.pricingSubtitle}
@@ -645,11 +647,11 @@ export default function PageEditor() {
               {/* Referral Benefit Section */}
               <div className="p-6 bg-violet-50 rounded-2xl border border-violet-100 space-y-4">
                 <h4 className="font-bold text-violet-900 flex items-center gap-2">
-                  <Plus size={18} /> Referral Benefit Configuration
+                  <Plus size={18} /> {t('referralConfig')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-violet-700 mb-1">Benefit Title</label>
+                    <label className="block text-sm font-medium text-violet-700 mb-1">{t('benefitTitle')}</label>
                     <input
                       type="text"
                       value={content.referralBenefitTitle || ''}
@@ -659,7 +661,7 @@ export default function PageEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-violet-700 mb-1">Benefit Description</label>
+                    <label className="block text-sm font-medium text-violet-700 mb-1">{t('benefitDescription')}</label>
                     <input
                       type="text"
                       value={content.referralBenefitDesc || ''}
@@ -674,11 +676,11 @@ export default function PageEditor() {
               {/* Wallet & Pricing Configuration */}
               <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-4">
                 <h4 className="font-bold text-emerald-900 flex items-center gap-2">
-                  <CreditCard size={18} /> Wallet & Pricing Configuration
+                  <CreditCard size={18} /> {t('walletPricingConfig')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-emerald-700 mb-1">Welcome Bonus (Coins)</label>
+                    <label className="block text-sm font-medium text-emerald-700 mb-1">{t('welcomeBonus')}</label>
                     <input
                       type="number"
                       value={content.welcomeBonusAmount || 0}
@@ -688,7 +690,7 @@ export default function PageEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-emerald-700 mb-1">Price per Sqft (Coins)</label>
+                    <label className="block text-sm font-medium text-emerald-700 mb-1">{t('pricePerSqft')}</label>
                     <input
                       type="number"
                       value={content.pricePerSqft || 0}
@@ -698,7 +700,7 @@ export default function PageEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-emerald-700 mb-1">Price per Room (Coins)</label>
+                    <label className="block text-sm font-medium text-emerald-700 mb-1">{t('pricePerRoom')}</label>
                     <input
                       type="number"
                       value={content.pricePerRoom || 0}
@@ -713,11 +715,11 @@ export default function PageEditor() {
               {/* Global Offer Section */}
               <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100 space-y-4">
                 <h4 className="font-bold text-indigo-900 flex items-center gap-2">
-                  <Save size={18} /> Global Discount Offer Section
+                  <Save size={18} /> {t('globalOffer')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-indigo-700 mb-1">Offer Title</label>
+                    <label className="block text-sm font-medium text-indigo-700 mb-1">{t('offerTitle')}</label>
                     <input
                       type="text"
                       value={content.offerTitle || ''}
@@ -726,7 +728,7 @@ export default function PageEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-indigo-700 mb-1">Offer Expiry Date</label>
+                    <label className="block text-sm font-medium text-indigo-700 mb-1">{t('offerExpiry')}</label>
                     <input
                       type="date"
                       value={content.offerExpiryDate || ''}
@@ -736,7 +738,7 @@ export default function PageEditor() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-indigo-700 mb-1">Offer Description</label>
+                  <label className="block text-sm font-medium text-indigo-700 mb-1">{t('offerDescription')}</label>
                   <textarea
                     value={content.offerDescription || ''}
                     onChange={(e) => setContent({ ...content, offerDescription: e.target.value })}
@@ -748,12 +750,12 @@ export default function PageEditor() {
               {/* Construction Design Package */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900">1. Construction Design Package</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{formatNumber(1)}. {t('constructionPackages')}</h3>
                   <button
                     onClick={() => addPricingPlan('construction')}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-semibold"
                   >
-                    <Plus size={16} /> Add Plan
+                    <Plus size={16} /> {t('addPlan')}
                   </button>
                 </div>
                 {content.constructionPricingPlans.map((plan, pIndex) => (
@@ -765,7 +767,7 @@ export default function PageEditor() {
                       <Trash2 size={18} />
                     </button>
                     <div className="flex items-center justify-between pr-10">
-                      <h4 className="font-bold text-lg text-slate-800">{plan.name} Plan</h4>
+                      <h4 className="font-bold text-lg text-slate-800">{plan.name} {t('plan')}</h4>
                       <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                         <input
                           type="checkbox"
@@ -773,12 +775,12 @@ export default function PageEditor() {
                           onChange={(e) => updatePricingPlan('construction', pIndex, 'isPopular', e.target.checked)}
                           className="rounded text-indigo-600 focus:ring-indigo-500"
                         />
-                        Most Popular
+                        {t('mostPopular')}
                       </label>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Plan Name</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('planName')}</label>
                         <input
                           type="text"
                           value={plan.name}
@@ -787,17 +789,17 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Original Price</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('originalPrice')}</label>
                         <input
                           type="text"
-                          placeholder="e.g. ₹20,000"
+                          placeholder={t('pricePlaceholder')}
                           value={plan.originalPrice || ''}
                           onChange={(e) => updatePricingPlan('construction', pIndex, 'originalPrice', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Discounted Price</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('discountedPrice')}</label>
                         <input
                           type="text"
                           value={plan.price}
@@ -806,7 +808,7 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Period</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('period')}</label>
                         <input
                           type="text"
                           value={plan.period}
@@ -815,10 +817,10 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Discount Tag</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('discountTag')}</label>
                         <input
                           type="text"
-                          placeholder="e.g. Save 20%"
+                          placeholder={t('save20PercentPlaceholder')}
                           value={plan.discountLabel || ''}
                           onChange={(e) => updatePricingPlan('construction', pIndex, 'discountLabel', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
@@ -828,17 +830,17 @@ export default function PageEditor() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Sample PDF URL</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('samplePdfUrl')}</label>
                         <input
                           type="text"
-                          placeholder="https://example.com/sample.pdf"
+                          placeholder={t('samplePdfUrlPlaceholder')}
                           value={plan.samplePdfUrl || ''}
                           onChange={(e) => updatePricingPlan('construction', pIndex, 'samplePdfUrl', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Upload Sample PDF</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('uploadSamplePdf')}</label>
                         <div className="flex items-center gap-2">
                           <input
                             type="file"
@@ -856,14 +858,14 @@ export default function PageEditor() {
                             ) : (
                               <Upload size={18} />
                             )}
-                            {uploadingPdf === `construction-${pIndex}` ? 'Uploading...' : 'Upload PDF from Device'}
+                            {uploadingPdf === `construction-${pIndex}` ? t('uploading') : t('uploadPdfFromDevice')}
                           </label>
                         </div>
                       </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Features</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">{t('features')}</label>
                       <div className="space-y-2">
                         {plan.features.map((feature, fIndex) => (
                           <div key={fIndex} className="flex items-center gap-2">
@@ -886,7 +888,7 @@ export default function PageEditor() {
                           className="flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-sm font-medium"
                         >
                           <Plus size={16} />
-                          Add Feature
+                          {t('addFeature')}
                         </button>
                       </div>
                     </div>
@@ -897,12 +899,12 @@ export default function PageEditor() {
               {/* Interior Design Packages */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900">2. Interior Design Packages</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{formatNumber(2)}. {t('interiorPackages')}</h3>
                   <button
                     onClick={() => addPricingPlan('interior')}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-semibold"
                   >
-                    <Plus size={16} /> Add Plan
+                    <Plus size={16} /> {t('addPlan')}
                   </button>
                 </div>
                 {content.interiorPricingPlans.map((plan, pIndex) => (
@@ -914,7 +916,7 @@ export default function PageEditor() {
                       <Trash2 size={18} />
                     </button>
                     <div className="flex items-center justify-between pr-10">
-                      <h4 className="font-bold text-lg text-slate-800">{plan.name} Plan</h4>
+                      <h4 className="font-bold text-lg text-slate-800">{plan.name} {t('plan')}</h4>
                       <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                         <input
                           type="checkbox"
@@ -922,12 +924,12 @@ export default function PageEditor() {
                           onChange={(e) => updatePricingPlan('interior', pIndex, 'isPopular', e.target.checked)}
                           className="rounded text-indigo-600 focus:ring-indigo-500"
                         />
-                        Most Popular
+                        {t('mostPopular')}
                       </label>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Plan Name</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('planName')}</label>
                         <input
                           type="text"
                           value={plan.name}
@@ -936,17 +938,17 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Original Price</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('originalPrice')}</label>
                         <input
                           type="text"
-                          placeholder="e.g. ₹30,000"
+                          placeholder={t('pricePlaceholder')}
                           value={plan.originalPrice || ''}
                           onChange={(e) => updatePricingPlan('interior', pIndex, 'originalPrice', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Discounted Price</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('discountedPrice')}</label>
                         <input
                           type="text"
                           value={plan.price}
@@ -955,7 +957,7 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Period</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('period')}</label>
                         <input
                           type="text"
                           value={plan.period}
@@ -964,10 +966,10 @@ export default function PageEditor() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Discount Tag</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('discountTag')}</label>
                         <input
                           type="text"
-                          placeholder="e.g. Save 20%"
+                          placeholder={t('save20PercentPlaceholder')}
                           value={plan.discountLabel || ''}
                           onChange={(e) => updatePricingPlan('interior', pIndex, 'discountLabel', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
@@ -977,17 +979,17 @@ export default function PageEditor() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Sample PDF URL</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('samplePdfUrl')}</label>
                         <input
                           type="text"
-                          placeholder="https://example.com/sample.pdf"
+                          placeholder={t('samplePdfUrlPlaceholder')}
                           value={plan.samplePdfUrl || ''}
                           onChange={(e) => updatePricingPlan('interior', pIndex, 'samplePdfUrl', e.target.value)}
                           className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Upload Sample PDF</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('uploadSamplePdf')}</label>
                         <div className="flex items-center gap-2">
                           <input
                             type="file"
@@ -1005,14 +1007,14 @@ export default function PageEditor() {
                             ) : (
                               <Upload size={18} />
                             )}
-                            {uploadingPdf === `interior-${pIndex}` ? 'Uploading...' : 'Upload PDF from Device'}
+                            {uploadingPdf === `interior-${pIndex}` ? t('uploading') : t('uploadPdfFromDevice')}
                           </label>
                         </div>
                       </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Features</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">{t('features')}</label>
                       <div className="space-y-2">
                         {plan.features.map((feature, fIndex) => (
                           <div key={fIndex} className="flex items-center gap-2">
@@ -1035,7 +1037,7 @@ export default function PageEditor() {
                           className="flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-sm font-medium"
                         >
                           <Plus size={16} />
-                          Add Feature
+                          {t('addFeature')}
                         </button>
                       </div>
                     </div>

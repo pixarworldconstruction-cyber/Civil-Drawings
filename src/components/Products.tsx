@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PageContent } from '../types';
 import { Loader2, ShoppingCart, ArrowRight, Tag } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ProductsProps {
   onNavigate: (page: string) => void;
@@ -43,6 +44,7 @@ const DEFAULT_CONTENT: PageContent = {
 };
 
 export default function Products({ onNavigate }: ProductsProps) {
+  const { t } = useLanguage();
   const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +87,7 @@ export default function Products({ onNavigate }: ProductsProps) {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-bold text-slate-900 mb-4"
           >
-            {content.productsTitle}
+            {content.productsTitle || t('ourProducts')}
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: -20 }}
@@ -93,7 +95,7 @@ export default function Products({ onNavigate }: ProductsProps) {
             transition={{ delay: 0.1 }}
             className="text-lg text-slate-600 max-w-2xl mx-auto"
           >
-            {content.productsDesc}
+            {content.productsDesc || t('productsDesc')}
           </motion.p>
         </div>
 
@@ -126,7 +128,7 @@ export default function Products({ onNavigate }: ProductsProps) {
                     onClick={() => onNavigate('pricing')}
                     className="flex items-center gap-2 text-indigo-600 font-semibold hover:gap-3 transition-all"
                   >
-                    View Plans <ArrowRight size={18} />
+                    {t('viewPlans')} <ArrowRight size={18} />
                   </button>
                   <button 
                     onClick={() => onNavigate('pricing')}
@@ -142,7 +144,7 @@ export default function Products({ onNavigate }: ProductsProps) {
 
         {(!content.products || content.products.length === 0) && (
           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-            <p className="text-slate-500">No products available at the moment.</p>
+            <p className="text-slate-500">{t('noProductsAvailable')}</p>
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ import Products from './components/Products';
 import Payment from './components/Payment';
 import { Loader2 } from 'lucide-react';
 import { PricingPlan } from './types';
+import { LanguageProvider } from './contexts/LanguageContext';
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -138,13 +139,15 @@ export default function App() {
   };
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-        <Navbar user={user} onNavigate={setCurrentPage} currentPage={currentPage} />
-        <main>
-          {renderPage()}
-        </main>
-      </div>
-    </ErrorBoundary>
+    <LanguageProvider>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+          <Navbar user={user} onNavigate={setCurrentPage} currentPage={currentPage} />
+          <main>
+            {renderPage()}
+          </main>
+        </div>
+      </ErrorBoundary>
+    </LanguageProvider>
   );
 }

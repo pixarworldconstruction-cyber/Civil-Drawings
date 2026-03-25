@@ -4,6 +4,7 @@ import { Building2, CheckCircle2, ArrowRight, Shield, Clock, Users, Layout, Box,
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { PageContent } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HomeProps {
   onNavigate: (page: string) => void;
@@ -59,6 +60,7 @@ const DEFAULT_CONTENT: PageContent = {
 };
 
 export default function Home({ onNavigate, currentPage }: HomeProps) {
+  const { t, formatNumber } = useLanguage();
   const [content, setContent] = useState<PageContent>(DEFAULT_CONTENT);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -173,10 +175,10 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
                   onClick={() => onNavigate('pricing')}
                   className="rounded-full bg-indigo-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all"
                 >
-                  Get Started
+                  {t('getStarted')}
                 </button>
                 <button onClick={() => onNavigate('about')} className="text-lg font-semibold leading-6 text-white flex items-center gap-2">
-                  Learn more <ArrowRight size={20} />
+                  {t('learnMore')} <ArrowRight size={20} />
                 </button>
               </div>
             </motion.div>
@@ -193,8 +195,8 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
                     <CheckCircle2 size={32} />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-white">1,200+ Projects</p>
-                    <p className="text-indigo-200">Managed successfully</p>
+                    <p className="text-xl font-bold text-white">{formatNumber(1200)}+ {t('projects')}</p>
+                    <p className="text-indigo-200">{t('managedSuccessfully')}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -207,7 +209,7 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
                     ></motion.div>
                   </div>
                   <div className="flex justify-between text-sm text-indigo-200">
-                    <span>Efficiency Rate</span>
+                    <span>{t('efficiencyRate')}</span>
                     <span className="font-bold text-white">85%</span>
                   </div>
                 </div>
@@ -220,8 +222,8 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
       {/* Features Section */}
       <div className="py-24 sm:py-32 max-w-7xl mx-auto px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-base font-semibold leading-7 text-indigo-600">Efficiency First</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Everything you need to manage site drawings</p>
+          <h2 className="text-base font-semibold leading-7 text-indigo-600">{t('efficiencyFirst')}</h2>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">{t('everythingYouNeed')}</p>
         </div>
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12">
           {content.features.map((feature, i) => (
@@ -284,11 +286,11 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <p className="text-4xl font-bold text-white">99.9%</p>
-                  <p className="text-indigo-200 text-sm">Uptime reliability</p>
+                  <p className="text-indigo-200 text-sm">{t('uptimeReliability')}</p>
                 </div>
                 <div>
                   <p className="text-4xl font-bold text-white">24/7</p>
-                  <p className="text-indigo-200 text-sm">Expert support</p>
+                  <p className="text-indigo-200 text-sm">{t('expertSupport')}</p>
                 </div>
               </div>
             </div>
@@ -302,13 +304,13 @@ export default function Home({ onNavigate, currentPage }: HomeProps) {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold">CD</div>
-            <span className="font-bold text-slate-900">Civil Drawings</span>
+            <span className="font-bold text-slate-900">{t('civilDrawings')}</span>
           </div>
-          <p className="text-slate-500 text-sm">© 2026 Civil Drawings Inc. All rights reserved.</p>
+          <p className="text-slate-500 text-sm">© 2026 {t('civilDrawings')} Inc. {t('allRightsReserved')}.</p>
           <div className="flex gap-6 text-slate-400">
-            <a href="#" className="hover:text-indigo-600">Privacy</a>
-            <a href="#" className="hover:text-indigo-600">Terms</a>
-            <a href="#" className="hover:text-indigo-600">Contact</a>
+            <a href="#" className="hover:text-indigo-600">{t('privacy')}</a>
+            <a href="#" className="hover:text-indigo-600">{t('terms')}</a>
+            <a href="#" className="hover:text-indigo-600">{t('contact')}</a>
           </div>
         </div>
       </footer>

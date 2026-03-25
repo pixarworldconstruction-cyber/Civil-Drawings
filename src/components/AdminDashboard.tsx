@@ -10,7 +10,10 @@ import ConfirmationModal from './ConfirmationModal';
 import PageEditor from './PageEditor';
 import imageCompression from 'browser-image-compression';
 
+import { useLanguage } from '../contexts/LanguageContext';
+
 export default function AdminDashboard() {
+  const { t, formatNumber } = useLanguage();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userProjects, setUserProjects] = useState<Project[]>([]);
@@ -58,7 +61,7 @@ export default function AdminDashboard() {
     setSavingAdminProfile(true);
     try {
       await setDoc(doc(db, 'siteContent', 'adminProfile'), adminProfile);
-      alert('Admin profile updated successfully!');
+      alert(t('profileUpdatedSuccess'));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'siteContent/adminProfile');
     } finally {
@@ -97,7 +100,7 @@ export default function AdminDashboard() {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               setAdminProfile(prev => ({ ...prev, logoUrl: downloadURL }));
-              alert('Admin logo uploaded successfully!');
+              alert(t('adminLogoUploadedSuccess'));
               resolve();
             } catch (err) {
               reject(err);
@@ -107,9 +110,24 @@ export default function AdminDashboard() {
       });
     } catch (error) {
       console.error('Admin logo upload error:', error);
-      alert('Failed to upload logo.');
+      alert(t('adminLogoUploadFailed'));
     } finally {
       setUploadingAdminLogo(false);
+    }
+  };
+
+  const getStatusTranslation = (status: ProjectStatus) => {
+    switch (status) {
+      case 'Project payment not processed': return t('statusPaymentNotProcessed');
+      case 'Payment received': return t('statusPaymentReceived');
+      case 'All Details verified': return t('statusDetailsVerified');
+      case 'Data (photo/details) missing': return t('statusDataMissing');
+      case 'Project drawing in process': return t('statusDrawingInProcess');
+      case '1st preview sent': return t('status1stPreviewSent');
+      case '2nd preview sent': return t('status2ndPreviewSent');
+      case 'Working on revision': return t('statusWorkingOnRevision');
+      case 'Project completed': return t('statusProjectCompleted');
+      default: return status;
     }
   };
 
@@ -200,7 +218,7 @@ export default function AdminDashboard() {
     const MAX_SIZE = 50 * 1024 * 1024;
     const oversizedFiles = files.filter(file => file.size > MAX_SIZE);
     if (oversizedFiles.length > 0) {
-      alert('Some files are too large. Maximum size per file is 50MB.');
+      alert(t('fileTooLarge'));
       return;
     }
 
@@ -245,11 +263,13 @@ export default function AdminDashboard() {
   };
 
   const deleteFile = async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this file?')) return;
+    if (!confirm(t('deleteFileConfirm'))) return;
     try {
       await deleteDoc(doc(db, 'files', fileId));
+      alert(t('fileDeleteSuccess'));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'files');
+      alert(t('fileDeleteError'));
     }
   };
 
@@ -259,10 +279,12 @@ export default function AdminDashboard() {
       await updateDoc(doc(db, 'projects', projectId), {
         status: newStatus
       });
+      alert(t('statusUpdateSuccess'));
       // Mock email notification
       console.log(`Email sent to ${selectedUser?.email}: Project "${selectedProject?.name}" status updated to "${newStatus}"`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `projects/${projectId}`);
+      alert(t('statusUpdateError'));
     } finally {
       setUpdatingStatus(null);
     }
@@ -274,8 +296,10 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, 'projects', projectToDelete));
       if (selectedProject?.id === projectToDelete) setSelectedProject(null);
       setProjectToDelete(null);
+      alert(t('fileDeleteSuccess'));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `projects/${projectToDelete}`);
+      alert(t('fileDeleteError'));
     }
   };
 
@@ -283,7 +307,7 @@ export default function AdminDashboard() {
     if (!selectedUser || !adminAddCoins) return;
     const amount = parseInt(adminAddCoins);
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid positive amount');
+      alert(t('invalidAmount'));
       return;
     }
 
@@ -294,9 +318,10 @@ export default function AdminDashboard() {
         walletBalance: (selectedUser.walletBalance || 0) + amount
       });
       setAdminAddCoins('');
-      alert(`Successfully added ${amount} coins to ${selectedUser.displayName || selectedUser.email}'s wallet.`);
+      alert(t('coinsAddedSuccess', { amount, user: selectedUser.displayName || selectedUser.email }));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${selectedUser.uid}`);
+      alert(t('coinsAddError'));
     } finally {
       setIsUpdatingWallet(false);
     }
@@ -315,7 +340,7 @@ export default function AdminDashboard() {
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
             <LayoutDashboard size={20} />
           </div>
-          <span className="font-bold text-slate-900">Admin</span>
+          <span className="font-bold text-slate-900">{t('admin')}</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -347,8 +372,8 @@ export default function AdminDashboard() {
                 <LayoutDashboard size={24} />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900 leading-tight">Admin Panel</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Management Suite</p>
+                <h2 className="font-bold text-slate-900 leading-tight">{t('adminPanel')}</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('managementSuite')}</p>
               </div>
             </div>
 
@@ -360,7 +385,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <Users size={20} />
-                Contractors
+                {t('contractors')}
               </button>
               <button
                 onClick={() => { setActiveTab('content'); setIsSidebarOpen(false); }}
@@ -369,7 +394,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <Settings size={20} />
-                Page Editor
+                {t('pageEditor')}
               </button>
               <button
                 onClick={() => { setActiveTab('adminProfile'); setIsSidebarOpen(false); }}
@@ -378,7 +403,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <Building2 size={20} />
-                Admin Profile
+                {t('adminProfile')}
               </button>
             </nav>
 
@@ -388,7 +413,7 @@ export default function AdminDashboard() {
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
               >
                 <LogOut size={20} />
-                Logout
+                {t('logout')}
               </button>
             </div>
           </div>
@@ -398,8 +423,8 @@ export default function AdminDashboard() {
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
       <div className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Admin Console</h1>
-          <p className="text-slate-500 mt-1">Monitor all contractors and their project activities</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t('adminConsole')}</h1>
+          <p className="text-slate-500 mt-1">{t('monitorContractors')}</p>
         </div>
         
         <div className="flex bg-slate-100 p-1 rounded-xl">
@@ -412,7 +437,7 @@ export default function AdminDashboard() {
             }`}
           >
             <Users size={18} />
-            Contractors
+            {t('contractors')}
           </button>
           <button
             onClick={() => setActiveTab('content')}
@@ -423,7 +448,7 @@ export default function AdminDashboard() {
             }`}
           >
             <FileEdit size={18} />
-            Page Content
+            {t('pageContent')}
           </button>
           <button
             onClick={() => setActiveTab('adminProfile')}
@@ -434,7 +459,7 @@ export default function AdminDashboard() {
             }`}
           >
             <Building2 size={18} />
-            Admin Profile
+            {t('adminProfile')}
           </button>
         </div>
       </div>
@@ -451,13 +476,13 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-8">Admin Company Profile</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-8">{t('adminCompanyProfile')}</h2>
           <form onSubmit={handleAdminProfileUpdate} className="space-y-6 max-w-2xl">
             <div className="flex items-center gap-8 mb-8">
               <div className="relative">
                 <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
                   {adminProfile.logoUrl ? (
-                    <img src={adminProfile.logoUrl || undefined} alt="Logo Preview" className="w-full h-full object-contain" />
+                    <img src={adminProfile.logoUrl || undefined} alt={t('logoPreview')} className="w-full h-full object-contain" />
                   ) : (
                     <ImageIcon className="text-slate-300" size={48} />
                   )}
@@ -468,56 +493,56 @@ export default function AdminDashboard() {
                 </label>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Admin Company Logo</h3>
-                <p className="text-sm text-slate-500">This logo will appear on all customer invoices.</p>
+                <h3 className="text-lg font-bold text-slate-900">{t('adminCompanyLogo')}</h3>
+                <p className="text-sm text-slate-500">{t('logoInvoices')}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Company Name</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('companyName')}</label>
                 <input
                   type="text"
                   value={adminProfile.companyName}
                   onChange={(e) => setAdminProfile(prev => ({ ...prev, companyName: e.target.value }))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                  placeholder="e.g. Admin Architectural Studio"
+                  placeholder={t('companyNamePlaceholder')}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Mobile Number</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('mobileNumber')}</label>
                 <input
                   type="tel"
                   value={adminProfile.mobileNumber}
                   onChange={(e) => setAdminProfile(prev => ({ ...prev, mobileNumber: e.target.value }))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                  placeholder="+91 98765 43210"
+                  placeholder={t('mobileNumberPlaceholder')}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">GST Number</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('gstNumber')}</label>
                 <input
                   type="text"
                   value={adminProfile.gstNumber}
                   onChange={(e) => setAdminProfile(prev => ({ ...prev, gstNumber: e.target.value }))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-                  placeholder="22AAAAA0000A1Z5"
+                  placeholder={t('gstNumberPlaceholder')}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">{t('address')}</label>
               <textarea
                 value={adminProfile.address}
                 onChange={(e) => setAdminProfile(prev => ({ ...prev, address: e.target.value }))}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 h-32 resize-none transition-all"
-                placeholder="Full office address..."
+                placeholder={t('addressPlaceholder')}
                 required
               />
             </div>
@@ -528,7 +553,7 @@ export default function AdminDashboard() {
               className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 flex items-center gap-2"
             >
               {savingAdminProfile ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              {savingAdminProfile ? 'Saving...' : 'Save Admin Profile'}
+              {savingAdminProfile ? t('uploading') : t('saveAdminProfile')}
             </button>
           </form>
         </motion.div>
@@ -540,14 +565,14 @@ export default function AdminDashboard() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
-                placeholder="Search contractors..."
+                placeholder={t('searchContractors')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Contractors</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">{t('contractors')}</h3>
               {filteredUsers.map(u => (
                 <div
                   key={u.uid}
@@ -560,7 +585,7 @@ export default function AdminDashboard() {
                 >
                   <div className="overflow-hidden">
                     <p className={`text-sm font-bold truncate ${selectedUser?.uid === u.uid ? 'text-indigo-900' : 'text-slate-700'}`}>
-                      {u.displayName || 'Unnamed Contractor'}
+                      {u.displayName || t('unnamedContractor')}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
                   </div>
@@ -574,24 +599,24 @@ export default function AdminDashboard() {
           <div className="lg:col-span-3 space-y-8">
             {/* Wallet Management */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Wallet Management</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">{t('walletManagement')}</h3>
               {!selectedUser ? (
                 <div className="bg-slate-50 rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
                   <Coins className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Select a contractor to manage wallet</p>
+                  <p className="text-xs text-slate-500">{t('selectContractorToManageWallet')}</p>
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</p>
-                    <p className="text-xl font-bold text-emerald-600">{selectedUser.walletBalance || 0} Coins</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('currentBalance')}</p>
+                    <p className="text-xl font-bold text-emerald-600">{formatNumber(selectedUser.walletBalance || 0)} {t('coins')}</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Add Coins Manually</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('addCoinsManually')}</p>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="Amount"
+                        placeholder={t('amount')}
                         value={adminAddCoins}
                         onChange={(e) => setAdminAddCoins(e.target.value)}
                         className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -602,7 +627,7 @@ export default function AdminDashboard() {
                         className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-1"
                       >
                         {isUpdatingWallet ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                        Add
+                        {t('add')}
                       </button>
                     </div>
                   </div>
@@ -611,16 +636,16 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Projects</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">{t('myProjects')}</h3>
               {!selectedUser ? (
                 <div className="bg-slate-50 rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
                   <Folder className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Select a contractor to view their projects</p>
+                  <p className="text-xs text-slate-500">{t('selectContractorToViewProjects')}</p>
                 </div>
               ) : userProjects.length === 0 ? (
                 <div className="bg-slate-50 rounded-xl p-8 text-center border-2 border-dashed border-slate-200">
                   <Folder className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">No projects found for this contractor</p>
+                  <p className="text-xs text-slate-500">{t('noProjectsFound')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -652,25 +677,25 @@ export default function AdminDashboard() {
           <div className="lg:col-span-6 space-y-8">
             {/* Project Details */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">Project Details</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('projectDetails')}</h3>
               {!selectedProject ? (
                 <div className="bg-slate-50 rounded-xl p-10 text-center border-2 border-dashed border-slate-200">
                   <FileText className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Select a project to view details</p>
+                  <p className="text-xs text-slate-500">{t('selectProjectToViewDetails')}</p>
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Project Name</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('projectName')}</p>
                       <p className="text-sm font-bold text-slate-900">{selectedProject.name}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Project Type</p>
-                      <p className="text-sm font-bold text-indigo-600">{selectedProject.projectType === 'Construction Project Drawing' ? 'Construction Project Drawing' : 'Interior Design Project Drawing'}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('projectType')}</p>
+                      <p className="text-sm font-bold text-indigo-600">{selectedProject.projectType === 'Construction Project Drawing' ? t('constructionProjectDrawing') : t('interiorDesignProjectDrawing')}</p>
                     </div>
                     <div className="col-span-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Project Status</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{t('projectStatus')}</p>
                       <div className="flex flex-wrap gap-2">
                         <select
                           value={selectedProject.status || 'Project payment not processed'}
@@ -679,67 +704,67 @@ export default function AdminDashboard() {
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
                         >
                           {projectStatuses.map(status => (
-                            <option key={status} value={status}>{status}</option>
+                            <option key={status} value={status}>{getStatusTranslation(status)}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sub Type</p>
-                      <p className="text-sm font-medium text-slate-700 capitalize">{selectedProject.subType}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('subType')}</p>
+                      <p className="text-sm font-medium text-slate-700 capitalize">{t(selectedProject.subType.toLowerCase().replace(/\s+/g, '') as any)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">North Direction</p>
-                      <p className="text-sm font-medium text-slate-700 capitalize">{selectedProject.northDirection}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('northDirection')}</p>
+                      <p className="text-sm font-medium text-slate-700 capitalize">{t(selectedProject.northDirection.toLowerCase() as any)}</p>
                     </div>
                   </div>
 
                   {selectedProject.subType === 'Resident' && (
                     <div className="pt-4 border-t border-slate-50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Resident Specifications</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">{t('residentSpecifications')}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Bedrooms</p>
-                          <p className="text-lg font-bold text-slate-900">{selectedProject.bedrooms}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">{t('bedrooms')}</p>
+                          <p className="text-lg font-bold text-slate-900">{formatNumber(selectedProject.bedrooms)}</p>
                         </div>
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Hall</p>
-                          <p className="text-lg font-bold text-slate-900">{selectedProject.hall}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">{t('hall')}</p>
+                          <p className="text-lg font-bold text-slate-900">{formatNumber(selectedProject.hall)}</p>
                         </div>
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Kitchen</p>
-                          <p className="text-lg font-bold text-slate-900">{selectedProject.kitchen}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">{t('kitchen')}</p>
+                          <p className="text-lg font-bold text-slate-900">{formatNumber(selectedProject.kitchen)}</p>
                         </div>
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Housing</p>
-                          <p className="text-sm font-bold text-slate-900 capitalize">{selectedProject.housingType}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">{t('housing')}</p>
+                          <p className="text-sm font-bold text-slate-900 capitalize">{t(selectedProject.housingType.toLowerCase().replace(/\s+/g, '') as any)}</p>
                         </div>
                       </div>
                     </div>
                   )}
 
                   <div className="pt-4 border-t border-slate-50">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Measurements & Areas</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">{t('measurementsAndAreas')}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Built-up Area</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedProject.totalBuiltUpArea} <span className="text-[10px] font-normal text-slate-500">sqft</span></p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{t('builtUpArea')}</p>
+                        <p className="text-sm font-bold text-slate-900">{formatNumber(selectedProject.totalBuiltUpArea)} <span className="text-[10px] font-normal text-slate-500">{t('sqft')}</span></p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Carpet Area</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedProject.totalCarpetArea} <span className="text-[10px] font-normal text-slate-500">sqft</span></p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{t('carpetArea')}</p>
+                        <p className="text-sm font-bold text-slate-900">{formatNumber(selectedProject.totalCarpetArea)} <span className="text-[10px] font-normal text-slate-500">{t('sqft')}</span></p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Floors</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedProject.numberOfFloors}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{t('floors')}</p>
+                        <p className="text-sm font-bold text-slate-900">{formatNumber(selectedProject.numberOfFloors)}</p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Landscaping</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedProject.landscapingArea} <span className="text-[10px] font-normal text-slate-500">sqft</span></p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{t('landscaping')}</p>
+                        <p className="text-sm font-bold text-slate-900">{formatNumber(selectedProject.landscapingArea)} <span className="text-[10px] font-normal text-slate-500">{t('sqft')}</span></p>
                       </div>
                       <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Compound</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedProject.compoundArea} <span className="text-[10px] font-normal text-slate-500">sqft</span></p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{t('compound')}</p>
+                        <p className="text-sm font-bold text-slate-900">{formatNumber(selectedProject.compoundArea)} <span className="text-[10px] font-normal text-slate-500">{t('sqft')}</span></p>
                       </div>
                     </div>
                   </div>
@@ -747,7 +772,7 @@ export default function AdminDashboard() {
                   <div className="pt-6 border-t border-slate-50 flex justify-between items-center">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       <Clock size={12} />
-                      Created: {selectedProject.createdAt?.toDate().toLocaleDateString()}
+                      {t('created')}: {selectedProject.createdAt?.toDate().toLocaleDateString()}
                     </div>
                     <button
                       onClick={() => {
@@ -757,7 +782,7 @@ export default function AdminDashboard() {
                       className="flex items-center gap-2 text-red-500 hover:text-red-700 text-xs font-bold transition-colors"
                     >
                       <Trash2 size={14} />
-                      Delete Project
+                      {t('deleteProject')}
                     </button>
                   </div>
                 </div>
@@ -767,22 +792,22 @@ export default function AdminDashboard() {
             {/* Site Images */}
             <div className="space-y-4">
               <div className="flex justify-between items-center px-2">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Site Images</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('siteImages')}</h3>
                 {selectedProject && (
                   <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                    {projectImages.length}/10
+                    {formatNumber(projectImages.length)}/{formatNumber(10)}
                   </span>
                 )}
               </div>
               {!selectedProject ? (
                 <div className="bg-slate-50 rounded-xl p-10 text-center border-2 border-dashed border-slate-200">
                   <ImageIcon className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Select a project to view images</p>
+                  <p className="text-xs text-slate-500">{t('selectProjectToViewImages')}</p>
                 </div>
               ) : projectImages.length === 0 ? (
                 <div className="bg-slate-50 rounded-xl p-10 text-center border-2 border-dashed border-slate-200">
                   <ImageIcon className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">No images uploaded</p>
+                  <p className="text-xs text-slate-500">{t('noImagesUploaded')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -812,11 +837,11 @@ export default function AdminDashboard() {
             {/* Project Files */}
             <div className="space-y-4">
               <div className="flex justify-between items-center px-2">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Files (PDF/Docs)</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('projectFiles')}</h3>
                 {selectedProject && (
                   <label className="cursor-pointer bg-indigo-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-indigo-700 transition-colors">
                     <Upload size={12} />
-                    {uploadingFile ? 'Uploading...' : 'Upload Files'}
+                    {uploadingFile ? t('uploading') : t('uploadFiles')}
                     <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onChange={handleFileUpload} disabled={uploadingFile} />
                   </label>
                 )}
@@ -824,12 +849,12 @@ export default function AdminDashboard() {
               {!selectedProject ? (
                 <div className="bg-slate-50 rounded-xl p-10 text-center border-2 border-dashed border-slate-200">
                   <FileText className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Select a project to manage files</p>
+                  <p className="text-xs text-slate-500">{t('selectProjectToManageFiles')}</p>
                 </div>
               ) : projectFiles.length === 0 ? (
                 <div className="bg-slate-50 rounded-xl p-10 text-center border-2 border-dashed border-slate-200">
                   <FileText className="mx-auto text-slate-300 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">No files uploaded for this project</p>
+                  <p className="text-xs text-slate-500">{t('noFilesUploaded')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -849,17 +874,17 @@ export default function AdminDashboard() {
                           href={file.url}
                           download={file.name}
                           className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
-                          title="Download"
+                          title={t('download')}
                         >
                           <Download size={16} />
                         </a>
-                        <button
-                          onClick={() => deleteFile(file.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                          <button
+                           onClick={() => deleteFile(file.id)}
+                           className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                           title={t('delete')}
+                         >
+                           <Trash2 size={16} />
+                         </button>
                       </div>
                     </div>
                   ))}
@@ -875,10 +900,10 @@ export default function AdminDashboard() {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteProject}
-        title="Delete Project?"
-        message={`Are you sure you want to delete "${selectedProject?.name}"? This action cannot be undone and will remove all associated images and files.`}
-        confirmText="Delete Project"
-        cancelText="Keep Project"
+        title={t('deleteProjectTitle')}
+        message={t('deleteProjectMessage').replace('{name}', selectedProject?.name || '')}
+        confirmText={t('deleteProjectConfirm')}
+        cancelText={t('deleteProjectCancel')}
       />
     </div>
   );
