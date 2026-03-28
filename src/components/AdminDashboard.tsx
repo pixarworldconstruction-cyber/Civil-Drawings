@@ -10,10 +10,7 @@ import ConfirmationModal from './ConfirmationModal';
 import PageEditor from './PageEditor';
 import imageCompression from 'browser-image-compression';
 
-import { useLanguage } from '../contexts/LanguageContext';
-
 export default function AdminDashboard() {
-  const { t, formatNumber } = useLanguage();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userProjects, setUserProjects] = useState<Project[]>([]);
@@ -61,7 +58,7 @@ export default function AdminDashboard() {
     setSavingAdminProfile(true);
     try {
       await setDoc(doc(db, 'siteContent', 'adminProfile'), adminProfile);
-      alert(t('profileUpdatedSuccess'));
+      alert('Profile updated successfully!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'siteContent/adminProfile');
     } finally {
@@ -100,7 +97,7 @@ export default function AdminDashboard() {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               setAdminProfile(prev => ({ ...prev, logoUrl: downloadURL }));
-              alert(t('adminLogoUploadedSuccess'));
+              alert('Admin logo uploaded successfully!');
               resolve();
             } catch (err) {
               reject(err);
@@ -110,7 +107,7 @@ export default function AdminDashboard() {
       });
     } catch (error) {
       console.error('Admin logo upload error:', error);
-      alert(t('adminLogoUploadFailed'));
+      alert('Admin logo upload failed');
     } finally {
       setUploadingAdminLogo(false);
     }
@@ -118,15 +115,15 @@ export default function AdminDashboard() {
 
   const getStatusTranslation = (status: ProjectStatus) => {
     switch (status) {
-      case 'Project payment not processed': return t('statusPaymentNotProcessed');
-      case 'Payment received': return t('statusPaymentReceived');
-      case 'All Details verified': return t('statusDetailsVerified');
-      case 'Data (photo/details) missing': return t('statusDataMissing');
-      case 'Project drawing in process': return t('statusDrawingInProcess');
-      case '1st preview sent': return t('status1stPreviewSent');
-      case '2nd preview sent': return t('status2ndPreviewSent');
-      case 'Working on revision': return t('statusWorkingOnRevision');
-      case 'Project completed': return t('statusProjectCompleted');
+      case 'Project payment not processed': return 'Project payment not processed';
+      case 'Payment received': return 'Payment received';
+      case 'All Details verified': return 'All Details verified';
+      case 'Data (photo/details) missing': return 'Data (photo/details) missing';
+      case 'Project drawing in process': return 'Project drawing in process';
+      case '1st preview sent': return '1st preview sent';
+      case '2nd preview sent': return '2nd preview sent';
+      case 'Working on revision': return 'Working on revision';
+      case 'Project completed': return 'Project completed';
       default: return status;
     }
   };
@@ -218,7 +215,7 @@ export default function AdminDashboard() {
     const MAX_SIZE = 50 * 1024 * 1024;
     const oversizedFiles = files.filter(file => file.size > MAX_SIZE);
     if (oversizedFiles.length > 0) {
-      alert(t('fileTooLarge'));
+      alert('File size exceeds 50MB limit');
       return;
     }
 
@@ -263,13 +260,13 @@ export default function AdminDashboard() {
   };
 
   const deleteFile = async (fileId: string) => {
-    if (!confirm(t('deleteFileConfirm'))) return;
+    if (!confirm('Are you sure you want to delete this file?')) return;
     try {
       await deleteDoc(doc(db, 'files', fileId));
-      alert(t('fileDeleteSuccess'));
+      alert('File deleted successfully');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'files');
-      alert(t('fileDeleteError'));
+      alert('Error deleting file');
     }
   };
 
@@ -279,12 +276,12 @@ export default function AdminDashboard() {
       await updateDoc(doc(db, 'projects', projectId), {
         status: newStatus
       });
-      alert(t('statusUpdateSuccess'));
+      alert('Status updated successfully!');
       // Mock email notification
       console.log(`Email sent to ${selectedUser?.email}: Project "${selectedProject?.name}" status updated to "${newStatus}"`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `projects/${projectId}`);
-      alert(t('statusUpdateError'));
+      alert('Error updating status');
     } finally {
       setUpdatingStatus(null);
     }
@@ -296,10 +293,10 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, 'projects', projectToDelete));
       if (selectedProject?.id === projectToDelete) setSelectedProject(null);
       setProjectToDelete(null);
-      alert(t('fileDeleteSuccess'));
+      alert('File deleted successfully');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `projects/${projectToDelete}`);
-      alert(t('fileDeleteError'));
+      alert('Error deleting file');
     }
   };
 
@@ -307,7 +304,7 @@ export default function AdminDashboard() {
     if (!selectedUser || !adminAddCoins) return;
     const amount = parseInt(adminAddCoins);
     if (isNaN(amount) || amount <= 0) {
-      alert(t('invalidAmount'));
+      alert('Please enter a valid amount');
       return;
     }
 
@@ -318,10 +315,10 @@ export default function AdminDashboard() {
         walletBalance: (selectedUser.walletBalance || 0) + amount
       });
       setAdminAddCoins('');
-      alert(t('coinsAddedSuccess', { amount, user: selectedUser.displayName || selectedUser.email }));
+      alert(`${amount} coins added to ${selectedUser.displayName || selectedUser.email}'s wallet`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${selectedUser.uid}`);
-      alert(t('coinsAddError'));
+      alert('Error adding coins');
     } finally {
       setIsUpdatingWallet(false);
     }

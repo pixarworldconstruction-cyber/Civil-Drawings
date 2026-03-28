@@ -12,26 +12,25 @@ interface PricingProps {
 }
 
 export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
-  const { t, formatNumber } = useLanguage();
   const [content, setContent] = useState<PageContent | null>(null);
   const [loading, setLoading] = useState(true);
 
   const DEFAULT_CONTENT: PageContent = {
     id: 'main',
-    heroTitle: t('heroTitle'),
-    heroSubtitle: t('heroSubtitle'),
+    heroTitle: 'Modernizing Civil Engineering Documentation',
+    heroSubtitle: 'A specialized platform for designer companies and civil construction contractors to manage, share, and track project drawings and site progress in real-time.',
     heroSlides: [],
     features: [],
-    productsTitle: t('productsTitle'),
-    productsDesc: t('productsDesc'),
+    productsTitle: 'Digital Drawing Management',
+    productsDesc: 'Our core product allows contractors to carry their entire project library in their pocket. No more bulky paper drawings or outdated versions on site.',
     productsItems: [],
     products: [],
-    aboutTitle: t('aboutTitle'),
-    aboutDesc: t('aboutDesc'),
-    pricingTitle: t('pricingTitle'),
-    pricingSubtitle: t('pricingSubtitle'),
-    offerTitle: t('offerTitle'),
-    offerDescription: t('offerDescription'),
+    aboutTitle: 'Our Mission',
+    aboutDesc: 'Civil Drawings was founded with a simple goal: to bridge the gap between the design office and the construction site. We believe that clear communication and real-time documentation are the keys to successful civil engineering projects.',
+    pricingTitle: 'Simple, transparent plans',
+    pricingSubtitle: 'Choose the plan that best fits your project requirements.',
+    offerTitle: 'Special Launch Offer!',
+    offerDescription: 'Get 20% off on all annual plans. Limited time only.',
     offerExpiryDate: '2026-03-30',
     constructionPricingPlans: [
       {
@@ -39,7 +38,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         price: '₹15,000',
         period: 'per project',
         features: ['Initial Consultation', 'Basic 2D Floor Plan', 'Single 3D View', '1 Revision'],
-        buttonText: t('getStarted'),
+        buttonText: 'Get Started',
         discountLabel: 'Save 10%'
       },
       {
@@ -47,7 +46,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         price: '₹45,000',
         period: 'per project',
         features: ['Detailed Consultation', 'Full 2D Drawings', '3 High-Quality 3D Views', '3 Revisions', 'Material Selection'],
-        buttonText: t('chooseStandard'),
+        buttonText: 'Choose Standard',
         isPopular: true,
         discountLabel: 'Save 15%'
       }
@@ -58,14 +57,14 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         price: '₹25,000',
         period: 'per room',
         features: ['Mood Board', 'Furniture Layout', 'Color Palette', '2 Revisions'],
-        buttonText: t('getStarted')
+        buttonText: 'Get Started'
       },
       {
         name: 'Full Design',
         price: '₹75,000',
         period: 'per project',
         features: ['Complete Interior Set', '3D Renderings', 'Material Specs', 'Site Visits'],
-        buttonText: t('chooseFullDesign'),
+        buttonText: 'Choose Full Design',
         isPopular: true
       }
     ]
@@ -107,19 +106,14 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
 
   const PricingCard = ({ plan }: { plan: PricingPlan }) => {
     const formatPrice = (priceStr: string) => {
-      const match = priceStr.match(/₹([\d,]+)/);
-      if (match) {
-        const amount = parseInt(match[1].replace(/,/g, ''));
-        return `₹${formatNumber(amount)}`;
-      }
       return priceStr;
     };
 
     const getPeriodTranslation = (period: string) => {
       switch (period) {
-        case 'per month': return t('mo');
-        case 'per room': return t('room');
-        case 'per project': return t('project');
+        case 'per month': return 'mo';
+        case 'per room': return 'room';
+        case 'per project': return 'project';
         default: return period;
       }
     };
@@ -172,7 +166,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <FileDown size={16} /> {t('samplePdf')}
+              <FileDown size={16} /> Sample PDF
             </a>
           )}
           <button 
@@ -209,7 +203,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
                 <div className="flex items-center gap-3 bg-white/10 px-6 py-3 rounded-2xl backdrop-blur-sm border border-white/20">
                   <Clock size={24} className="text-indigo-200" />
                   <div>
-                    <p className="text-xs text-indigo-200 uppercase font-bold">{t('offerEndsOn')}</p>
+                    <p className="text-xs text-indigo-200 uppercase font-bold">Offer ends on</p>
                     <p className="font-bold">{content.offerExpiryDate}</p>
                   </div>
                 </div>
@@ -225,7 +219,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
             animate={{ opacity: 1, y: 0 }}
             className="text-indigo-600 font-bold tracking-wide uppercase text-sm"
           >
-            {t('pricingPlans')}
+            Pricing Plans
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: -20 }}
@@ -249,7 +243,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         <div className="mb-24">
           <div className="flex items-center gap-4 mb-12">
             <div className="h-px flex-1 bg-slate-200"></div>
-            <h3 className="text-2xl font-bold text-slate-800 px-4">1. {t('constructionPackage')}</h3>
+            <h3 className="text-2xl font-bold text-slate-800 px-4">1. Construction Design Package</h3>
             <div className="h-px flex-1 bg-slate-200"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -263,7 +257,7 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         <div>
           <div className="flex items-center gap-4 mb-12">
             <div className="h-px flex-1 bg-slate-200"></div>
-            <h3 className="text-2xl font-bold text-slate-800 px-4">2. {t('interiorPackage')}</h3>
+            <h3 className="text-2xl font-bold text-slate-800 px-4">2. Interior Design Packages</h3>
             <div className="h-px flex-1 bg-slate-200"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -274,12 +268,12 @@ export default function Pricing({ onNavigate, onSelectPlan }: PricingProps) {
         </div>
 
         <div className="mt-24 text-center">
-          <p className="text-slate-500 mb-6">{t('customSolution')}</p>
+          <p className="text-slate-500 mb-6">Need a custom solution for your enterprise?</p>
           <button 
             onClick={() => onNavigate('auth')}
             className="inline-flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-700 transition-colors"
           >
-            {t('contactSales')} <ArrowRight size={20} />
+            Contact Sales <ArrowRight size={20} />
           </button>
         </div>
       </div>

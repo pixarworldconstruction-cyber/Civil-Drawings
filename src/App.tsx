@@ -139,15 +139,13 @@ export default function App() {
   };
 
   return (
-    <LanguageProvider>
-      <ErrorBoundary>
-        <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-          <Navbar user={user} onNavigate={setCurrentPage} currentPage={currentPage} />
-          <main>
-            {renderPage()}
-          </main>
-        </div>
-      </ErrorBoundary>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+        <Navbar user={user} onNavigate={setCurrentPage} currentPage={currentPage} />
+        <main>
+          {renderPage()}
+        </main>
+      </div>
+    </ErrorBoundary>
   );
 }
